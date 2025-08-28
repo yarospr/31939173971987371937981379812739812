@@ -1,0 +1,22 @@
+{
+  "short_name": "BALLS BATTLE",
+  "name": "BALLS BATTLE",
+  "icons": [
+    {
+      "src": "assets/images/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/images/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#1a1a1a",
+  "theme_color": "#00bcd4"
+}
