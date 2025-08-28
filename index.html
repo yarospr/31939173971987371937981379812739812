@@ -21,6 +21,8 @@
             --accent-color-dark: #008c9e;
             --success-color: #28a745;
             --success-color-hover: #218838;
+            --danger-color: #dc3545;
+            --danger-color-hover: #c82333;
         }
         html, body { 
             background-color: var(--bg-color); 
@@ -70,13 +72,14 @@
         .info { font-size: 12px; color: #aaa; margin-top: 15px; text-align: center; }
         .hidden { display: none !important; }
         
+        /* --- СТИЛИ МОДАЛЬНЫХ ОКОН --- */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: var(--surface-color); padding: 30px; border-radius: 10px; box-shadow: 0 5px 25px rgba(0,0,0,0.5); width: 90%; max-width: 500px; border: 1px solid var(--border-color); }
         
         .form-group { margin-bottom: 20px; text-align: left; }
         .form-group:last-of-type { margin-bottom: 0; }
         label { display: block; margin-bottom: 8px; color: var(--secondary-text); }
-        input[type="text"], input[type="color"], input[type="file"] { box-sizing: border-box; width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: var(--input-bg); color: white; font-size: 16px; }
+        input[type="text"], input[type="color"], input[type="file"], input[type="number"], select { box-sizing: border-box; width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #555; background-color: var(--input-bg); color: white; font-size: 16px; }
         input[type="color"] { padding: 2px; height: 45px; cursor: pointer; }
         input[type="file"] { font-size: 14px; }
         .color-presets { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -84,7 +87,8 @@
         .color-swatch:hover { transform: scale(1.1); border-color: var(--primary-text); }
         .color-group { display: flex; align-items: center; gap: 20px; }
         .color-group > div { flex-grow: 1; }
-
+        
+        /* --- СТИЛИ ДЛЯ ПОЛЗУНКОВ (TOGGLE) --- */
         .toggle-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -92,6 +96,25 @@
         .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: var(--accent-color); }
         input:checked + .slider:before { transform: translateX(26px); }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ПОСТАНОВОЧНОЙ ИГРЫ --- */
+        #staging-toggle-btn { display: flex; justify-content: space-between; align-items: center; }
+        #staging-status { font-size: 14px; color: var(--secondary-text); }
+        .disabled-look { opacity: 0.5; pointer-events: none; }
+        .form-group.disabled-look > * { pointer-events: none; } /* Чтобы дочерние элементы тоже не реагировали */
+        #comeback-hp-group { margin-top: 15px; }
+
+        /* --- НОВЫЕ СТИЛИ ДЛЯ ОВЕРЛЕЕВ СИМУЛЯЦИИ И ОТСЧЕТА --- */
+        .full-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 2000; text-align: center; }
+        #simulation-status { font-size: 32px; color: var(--primary-text); margin-bottom: 30px; }
+        #cancel-simulation-btn { width: auto; padding: 15px 40px; font-size: 20px; background-color: var(--danger-color); }
+        #cancel-simulation-btn:hover { background-color: var(--danger-color-hover); }
+        #countdown { font-size: 150px; color: var(--accent-color); font-weight: bold; animation: countdown-pulse 1s infinite; }
+        @keyframes countdown-pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
@@ -122,6 +145,10 @@
             </div>
         </div>
         <div class="main-buttons">
+            <button id="staging-toggle-btn">
+                <span>Постановочная игра</span>
+                <span id="staging-status">Выкл</span>
+            </button>
             <button id="arena-settings-btn">Настроить арену</button>
             <button id="start-game-btn">Начать игру</button>
         </div>
@@ -175,6 +202,56 @@
     </div>
 </div>
 
+<!-- НОВОЕ: Staging Game Modal -->
+<div id="staging-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="toggle-container" style="margin-bottom: 30px;">
+            <h3>Постановочная игра</h3>
+            <label class="switch">
+                <input type="checkbox" id="staging-active-toggle">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div id="staging-form-content" class="disabled-look">
+            <div class="form-group">
+                <label for="staging-winner">Выбрать победителя:</label>
+                <select id="staging-winner"></select>
+            </div>
+            <div class="form-group">
+                <label for="staging-min-time">Мин. время сражения (сек):</label>
+                <input type="number" id="staging-min-time" value="10" min="1">
+            </div>
+            <div class="form-group">
+                <label for="staging-max-time">Макс. время сражения (сек):</label>
+                <input type="number" id="staging-max-time" value="120" min="1">
+            </div>
+            <div class="toggle-container">
+                <span>"Камбэк"</span>
+                <label class="switch">
+                    <input type="checkbox" id="staging-comeback-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div id="comeback-hp-group" class="form-group hidden">
+                <label for="staging-comeback-hp">Предельно низкое здоровье победителя:</label>
+                <input type="number" id="staging-comeback-hp" value="1" min="1" max="4">
+            </div>
+        </div>
+        <button id="close-staging-modal-btn" style="margin-top: 20px;">Готово</button>
+    </div>
+</div>
+
+
+<!-- НОВОЕ: Simulation and Countdown Overlays -->
+<div id="simulation-overlay" class="full-overlay hidden">
+    <h2 id="simulation-status">Симуляция №1</h2>
+    <button id="cancel-simulation-btn">Отмена</button>
+</div>
+<div id="countdown-overlay" class="full-overlay hidden">
+    <div id="countdown">3</div>
+</div>
+
+
 <div id="game-container"><canvas id="game-canvas"></canvas></div>
 
 <script>
@@ -198,7 +275,6 @@ let audioCtx;
 let wakeLock = null;
 
 let allSounds = {}, backgroundSettings = {};
-// ИЗМЕНЕНО: Глобальные переменные для хранения загруженных картинок (raw_saw_img, raw_heart_img)
 let player1, player2, raw_saw_img, raw_heart_img;
 let particles_list = [], powerups = [];
 let saw_on_map = false, heart_on_map = false;
@@ -207,6 +283,11 @@ let game_over = false, winner = null, loser = null;
 let running = false;
 let game_start_time, screen_shake = 0, gameOverTime = null;
 
+// НОВОЕ: Переменные для симуляции
+let rng; // Наш генератор случайных чисел
+let isSimulating = false;
+let simulationFrameId = null;
+
 const mainMenuButton = { rect: { x: 0, y: 0, width: 280, height: 60 }, text: "В главное меню", visible: false, alpha: 0 };
 
 const PRESET_COLORS = { 
@@ -214,14 +295,25 @@ const PRESET_COLORS = {
     "Голубой": "#00BFFF", "Синий": "#4169E1", "Фиолетовый": "#9400D3", "Розовый": "#FF69B4", "Серый": "#808080"
 };
 
+// --- НОВЫЙ КЛАСС ДЛЯ ПРЕДСКАЗУЕМОГО RANDOM ---
+class SeededRandom {
+    constructor(seed) { this.seed = seed; }
+    random() {
+        let t = this.seed += 0x6D2B79F5;
+        t = Math.imul(t ^ t >>> 15, t | 1);
+        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+        return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
+
 // --- КЛАССЫ ---
 class Vector2 { constructor(x = 0, y = 0) { this.x = x; this.y = y; } add(v) { return new Vector2(this.x + v.x, this.y + v.y); } subtract(v) { return new Vector2(this.x - v.x, this.y - v.y); } multiply(s) { return new Vector2(this.x * s, this.y * s); } length() { return Math.sqrt(this.x * this.x + this.y * this.y); } normalize() { const l = this.length(); return l > 0 ? new Vector2(this.x / l, this.y / l) : new Vector2(); } distanceTo(v) { return this.subtract(v).length(); } dot(v) { return this.x * v.x + this.y * v.y; } rotate_rad(rad) { const cos = Math.cos(rad); const sin = Math.sin(rad); return new Vector2(this.x * cos - this.y * sin, this.x * sin + this.y * cos); } }
-class Particle { constructor(x, y, colors, count, min_speed, max_speed, gravity, lifetime_range, size_range) { this.particles = []; for (let i = 0; i < count; i++) { const angle = Math.random() * 2 * Math.PI; const speed = min_speed + Math.random() * (max_speed - min_speed); this.particles.push({ pos: new Vector2(x, y), vel: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed), life: lifetime_range[0] + Math.random() * (lifetime_range[1] - lifetime_range[0]), max_life: lifetime_range[1], color: colors[Math.floor(Math.random() * colors.length)], size: size_range[0] + Math.random() * (size_range[1] - size_range[0]) }); } this.gravity = gravity; } update() { for (const p of this.particles) { p.pos = p.pos.add(p.vel); p.vel.y += this.gravity; p.life -= 1; } this.particles = this.particles.filter(p => p.life > 0); } draw(surface) { surface.globalCompositeOperation = 'lighter'; for (const p of this.particles) { const alpha = p.life / p.max_life; if (alpha <= 0) continue; const size = p.size * alpha; if (size < 1) continue; surface.fillStyle = p.color; surface.globalAlpha = alpha; surface.beginPath(); surface.arc(p.pos.x, p.pos.y, size, 0, 2 * Math.PI); surface.fill(); } surface.globalAlpha = 1.0; surface.globalCompositeOperation = 'source-over'; } }
-class PowerUp { constructor(x, y, type) { this.type = type; const size = this.type === 'heart' ? 35 : 40; this.rect = { x: x, y: y, width: size, height: size }; this.image = type === 'saw' ? raw_saw_img : raw_heart_img; this.angle = 0; this.pulse_phase = 0; this.pulse_timer = Math.floor(Math.random() * 45); } update() { if (this.type === 'saw') { this.angle -= 12; } else { this.pulse_timer -= 1; if (this.pulse_timer <= 0) { this.pulse_timer = 0.75 * FPS; if (this.pulse_phase <= 0) this.pulse_phase = Math.PI; } if (this.pulse_phase > 0) { this.pulse_phase -= 0.4; } } } draw(surface) { const centerX = this.rect.x + this.rect.width / 2; const centerY = this.rect.y + this.rect.height / 2; if (this.type === 'saw') { surface.save(); surface.translate(centerX, centerY); surface.rotate(this.angle * Math.PI / 180); surface.drawImage(this.image, -this.rect.width / 2, -this.rect.height / 2, this.rect.width, this.rect.height); surface.restore(); } else { let scale = 1.0; if (this.pulse_phase > 0) { scale = 1.0 + 0.25 * Math.sin(this.pulse_phase); } const w = this.rect.width * scale; const h = this.rect.height * scale; surface.drawImage(this.image, centerX - w / 2, centerY - h / 2, w, h); } } }
+class Particle { constructor(x, y, colors, count, min_speed, max_speed, gravity, lifetime_range, size_range, local_rng) { this.particles = []; for (let i = 0; i < count; i++) { const angle = local_rng.random() * 2 * Math.PI; const speed = min_speed + local_rng.random() * (max_speed - min_speed); this.particles.push({ pos: new Vector2(x, y), vel: new Vector2(Math.cos(angle) * speed, Math.sin(angle) * speed), life: lifetime_range[0] + local_rng.random() * (lifetime_range[1] - lifetime_range[0]), max_life: lifetime_range[1], color: colors[Math.floor(local_rng.random() * colors.length)], size: size_range[0] + local_rng.random() * (size_range[1] - size_range[0]) }); } this.gravity = gravity; } update() { for (const p of this.particles) { p.pos = p.pos.add(p.vel); p.vel.y += this.gravity; p.life -= 1; } this.particles = this.particles.filter(p => p.life > 0); } draw(surface) { surface.globalCompositeOperation = 'lighter'; for (const p of this.particles) { const alpha = p.life / p.max_life; if (alpha <= 0) continue; const size = p.size * alpha; if (size < 1) continue; surface.fillStyle = p.color; surface.globalAlpha = alpha; surface.beginPath(); surface.arc(p.pos.x, p.pos.y, size, 0, 2 * Math.PI); surface.fill(); } surface.globalAlpha = 1.0; surface.globalCompositeOperation = 'source-over'; } }
+class PowerUp { constructor(x, y, type, local_rng) { this.type = type; const size = this.type === 'heart' ? 35 : 40; this.rect = { x: x, y: y, width: size, height: size }; this.image = type === 'saw' ? raw_saw_img : raw_heart_img; this.angle = 0; this.pulse_phase = 0; this.pulse_timer = Math.floor(local_rng.random() * 45); } update() { if (this.type === 'saw') { this.angle -= 12; } else { this.pulse_timer -= 1; if (this.pulse_timer <= 0) { this.pulse_timer = 0.75 * FPS; if (this.pulse_phase <= 0) this.pulse_phase = Math.PI; } if (this.pulse_phase > 0) { this.pulse_phase -= 0.4; } } } draw(surface) { const centerX = this.rect.x + this.rect.width / 2; const centerY = this.rect.y + this.rect.height / 2; if (this.type === 'saw') { surface.save(); surface.translate(centerX, centerY); surface.rotate(this.angle * Math.PI / 180); surface.drawImage(this.image, -this.rect.width / 2, -this.rect.height / 2, this.rect.width, this.rect.height); surface.restore(); } else { let scale = 1.0; if (this.pulse_phase > 0) { scale = 1.0 + 0.25 * Math.sin(this.pulse_phase); } const w = this.rect.width * scale; const h = this.rect.height * scale; surface.drawImage(this.image, centerX - w / 2, centerY - h / 2, w, h); } } }
 class Ball { 
-    constructor(x, y, base_image, color, name, initial_diameter) { 
+    constructor(x, y, base_image, color, name, initial_diameter, local_rng) { 
         this.pos = new Vector2(x, y); 
-        this.vel = new Vector2(Math.random() * 2 - 1, Math.random() * 2 - 1).normalize().multiply(7 + Math.random() * 5); 
+        this.vel = new Vector2(local_rng.random() * 2 - 1, local_rng.random() * 2 - 1).normalize().multiply(7 + local_rng.random() * 5); 
         this.base_image = base_image; 
         this.color = color; 
         this.name = name; 
@@ -261,7 +353,7 @@ class Ball {
         this.image = ballCanvas;
     }
     update_hp(amount) { this.hp = Math.max(0, Math.min(MAX_HP, this.hp + amount)); const min_scale = 0.5, max_scale = 1.0; this.target_scale = (this.hp <= 0) ? min_scale : (min_scale + (max_scale - min_scale) * ((this.hp - 1) / (MAX_HP - 1))); } 
-    update(bounds, trigger_shake) { 
+    update(bounds, trigger_shake, local_rng) { 
         if (Math.abs(this.current_scale - this.target_scale) > 0.001) { this.current_scale += (this.target_scale - this.current_scale) * 0.1; this.recreate_surface(); } 
         if (Math.abs(this.display_hp - this.hp) > 0.001) { this.display_hp += (this.hp - this.display_hp) * 0.1; } 
         this.pos = this.pos.add(this.vel); 
@@ -270,12 +362,12 @@ class Ball {
         if (this.pos.x - this.radius < bounds.left) { this.pos.x = bounds.left + this.radius; this.vel.x *= -1; hit_wall = true; } 
         if (this.pos.x + this.radius > bounds.right) { this.pos.x = bounds.right - this.radius; this.vel.x *= -1; hit_wall = true; } 
         if (this.pos.y - this.radius < bounds.top) { this.pos.y = bounds.top + this.radius; this.vel.y *= -1; hit_wall = true; } 
-        if (this.pos.y + this.radius > bounds.bottom) { this.pos.y = bounds.bottom - this.radius; this.vel.y *= -1; hit_wall = true; } 
+        if (this.pos.y + this.radius > bounds.bottom) { this.pos.y = bounds.bottom + this.radius; this.vel.y *= -1; hit_wall = true; } 
         
         if (hit_wall) { 
-            this.vel.x += (Math.random() - 0.5) * 2; 
-            this.vel.y += (Math.random() - 0.5) * 2; 
-            this.vel = this.vel.normalize().multiply(7 + Math.random() * 4); 
+            this.vel.x += (local_rng.random() - 0.5) * 2; 
+            this.vel.y += (local_rng.random() - 0.5) * 2; 
+            this.vel = this.vel.normalize().multiply(7 + local_rng.random() * 4); 
             trigger_shake(); 
             if (this.hp > 0) playSound('hit_border'); 
         } 
@@ -283,23 +375,8 @@ class Ball {
     draw(surface) { if (!this.image) return; if (this.is_attacking) { const num_teeth = 16, outer_radius = this.radius * 1.20; surface.fillStyle = SAW_COLOR; for (let i = 0; i < num_teeth; i++) { const angle = (this.saw_angle + i * (360 / num_teeth)) * Math.PI / 180; const p1_vec = new Vector2(this.radius, 0).rotate_rad(angle); const p2_vec = new Vector2(outer_radius, 0).rotate_rad(angle + Math.PI / num_teeth); const p3_vec = new Vector2(this.radius, 0).rotate_rad(angle + (2 * Math.PI / num_teeth)); surface.beginPath(); surface.moveTo(this.pos.x + p1_vec.x, this.pos.y + p1_vec.y); surface.lineTo(this.pos.x + p2_vec.x, this.pos.y + p2_vec.y); surface.lineTo(this.pos.x + p3_vec.x, this.pos.y + p3_vec.y); surface.closePath(); surface.fill(); } } surface.drawImage(this.image, this.pos.x - this.radius, this.pos.y - this.radius, this.radius * 2, this.radius * 2); } get_rect() { return { x: this.pos.x - this.radius, y: this.pos.y - this.radius, width: this.radius * 2, height: this.radius * 2 }; } }
 
 // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-async function acquireWakeLock() {
-    if ('wakeLock' in navigator) {
-        try {
-            wakeLock = await navigator.wakeLock.request('screen');
-            console.log('Screen Wake Lock is active.');
-        } catch (err) {
-            console.error(`${err.name}, ${err.message}`);
-        }
-    }
-}
-async function releaseWakeLock() {
-    if (wakeLock !== null) {
-        await wakeLock.release();
-        wakeLock = null;
-        console.log('Screen Wake Lock released.');
-    }
-}
+async function acquireWakeLock() { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); console.log('Screen Wake Lock is active.'); } catch (err) { console.error(`${err.name}, ${err.message}`); } } }
+async function releaseWakeLock() { if (wakeLock !== null) { await wakeLock.release(); wakeLock = null; console.log('Screen Wake Lock released.'); } }
 function darkenColor(hex, percent) { let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); const factor = 1 - percent / 100; r = Math.floor(r * factor); g = Math.floor(g * factor); b = Math.floor(b * factor); return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`; }
 function createPlaceholderImage(size, color) { const canvas = document.createElement('canvas'); canvas.width = size; canvas.height = size; const ctx = canvas.getContext('2d'); ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI); ctx.fillStyle = darkenColor(color, 40); ctx.fill(); return canvas; }
 function cropToSquare(image) { const size = Math.min(image.width, image.height); const sx = (image.width - size) / 2; const sy = (image.height - size) / 2; const tempCanvas = document.createElement('canvas'); tempCanvas.width = size; tempCanvas.height = size; const tempCtx = tempCanvas.getContext('2d'); tempCtx.drawImage(image, sx, sy, size, size, 0, 0, size, size); return tempCanvas; }
@@ -329,93 +406,27 @@ function getImage(file, url, color) {
         }
     });
 }
-
-// ИЗМЕНЕНО: Новые функции для загрузки ресурсов из файлов
-function loadImage(url) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => {
-            console.error(`Failed to load image: ${url}`);
-            reject(new Error(`Failed to load image: ${url}`));
-        };
-        img.src = url;
-    });
-}
-
-async function loadSound(url, audioContext) {
-    if (!audioContext) return null;
-    try {
-        const response = await fetch(url);
-        const arrayBuffer = await response.arrayBuffer();
-        return await audioContext.decodeAudioData(arrayBuffer);
-    } catch (e) {
-        console.error(`Failed to load or decode audio: ${url}`, e);
-        return null;
-    }
-}
-
-function playSound(soundKey) { if (!soundKey || !allSounds[soundKey] || !audioCtx || audioCtx.state === 'suspended') return; const buffer = allSounds[soundKey]; if (Array.isArray(buffer) && buffer.length > 0) { const randomBuffer = buffer[Math.floor(Math.random() * buffer.length)]; if (randomBuffer) { const source = audioCtx.createBufferSource(); source.buffer = randomBuffer; source.connect(audioCtx.destination); source.start(0); } } else if (!Array.isArray(buffer)) { const source = audioCtx.createBufferSource(); source.buffer = buffer; source.connect(audioCtx.destination); source.start(0); } }
+function loadImage(url) { return new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img); img.onerror = () => { console.error(`Failed to load image: ${url}`); reject(new Error(`Failed to load image: ${url}`)); }; img.src = url; }); }
+async function loadSound(url, audioContext) { if (!audioContext) return null; try { const response = await fetch(url); const arrayBuffer = await response.arrayBuffer(); return await audioContext.decodeAudioData(arrayBuffer); } catch (e) { console.error(`Failed to load or decode audio: ${url}`, e); return null; } }
+function playSound(soundKey) { if (isSimulating || !soundKey || !allSounds[soundKey] || !audioCtx || audioCtx.state === 'suspended') return; const buffer = allSounds[soundKey]; if (Array.isArray(buffer) && buffer.length > 0) { const randomBuffer = buffer[Math.floor(rng.random() * buffer.length)]; if (randomBuffer) { const source = audioCtx.createBufferSource(); source.buffer = randomBuffer; source.connect(audioCtx.destination); source.start(0); } } else if (!Array.isArray(buffer)) { const source = audioCtx.createBufferSource(); source.buffer = buffer; source.connect(audioCtx.destination); source.start(0); } }
 function checkCollision(rect1, rect2) { return rect1.x < rect2.x + rect2.width && rect1.x + rect1.width > rect2.x && rect1.y < rect2.y + rect2.height && rect1.y + rect1.height > rect2.y; }
 
 // --- ОСНОВНЫЕ ИГРОВЫЕ ФУНКЦИИ ---
 function drawBackground(surface) { if (backgroundSettings.type === 'solid') { surface.fillStyle = backgroundSettings.color1; surface.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT); } else { const gradient = surface.createLinearGradient(0, 0, 0, SCREEN_HEIGHT); gradient.addColorStop(0, backgroundSettings.color1); gradient.addColorStop(1, backgroundSettings.color2); surface.fillStyle = gradient; surface.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT); } }
-function draw_ui(surface, ball1, ball2) {
-    const bar_margin = 20;
-    const bar_total_width = SCREEN_WIDTH - (bar_margin * 2); 
-    const bar_height = 10;
-    const spacing = 5;
-    const cell_width = (bar_total_width - spacing * (MAX_HP - 1)) / MAX_HP;
-    const y_pos1 = 165;
-    const y_pos2 = 230;
-    const x_start = bar_margin;
-    surface.font = "bold 22px Arial";
-    surface.textAlign = "center";
-    surface.fillStyle = WHITE;
-    surface.fillText(ball1.name, SCREEN_WIDTH / 2, y_pos1 - 15);
-    surface.fillText(ball2.name, SCREEN_WIDTH / 2, y_pos2 - 15);
-    for (let i = 0; i < MAX_HP; i++) {
-        const hp_val1 = ball1.hp <= 0 ? 0 : ball1.display_hp;
-        const hp_val2 = ball2.hp <= 0 ? 0 : ball2.display_hp;
-        const cell_x1 = x_start + i * (cell_width + spacing);
-        const hp_in_this_cell1 = Math.max(0, Math.min(1, hp_val1 - i));
-        const fill_width1 = cell_width * hp_in_this_cell1;
-        surface.fillStyle = GREY;
-        surface.fillRect(cell_x1, y_pos1, cell_width, bar_height);
-        if (fill_width1 > 0) { surface.fillStyle = ball1.color; surface.fillRect(cell_x1, y_pos1, fill_width1, bar_height); }
-        surface.strokeStyle = WHITE;
-        surface.lineWidth = 2;
-        surface.strokeRect(cell_x1, y_pos1, cell_width, bar_height);
-        
-        const cell_x2 = x_start + i * (cell_width + spacing);
-        const hp_in_this_cell2 = Math.max(0, Math.min(1, hp_val2 - i));
-        const fill_width2 = cell_width * hp_in_this_cell2;
-        surface.fillStyle = GREY;
-        surface.fillRect(cell_x2, y_pos2, cell_width, bar_height);
-        if (fill_width2 > 0) { surface.fillStyle = ball2.color; surface.fillRect(cell_x2, y_pos2, fill_width2, bar_height); }
-        surface.strokeRect(cell_x2, y_pos2, cell_width, bar_height);
-    }
-}
+function draw_ui(surface, ball1, ball2) { const bar_margin = 20; const bar_total_width = SCREEN_WIDTH - (bar_margin * 2); const bar_height = 10; const spacing = 5; const cell_width = (bar_total_width - spacing * (MAX_HP - 1)) / MAX_HP; const y_pos1 = 165; const y_pos2 = 230; const x_start = bar_margin; surface.font = "bold 22px Arial"; surface.textAlign = "center"; surface.fillStyle = WHITE; surface.fillText(ball1.name, SCREEN_WIDTH / 2, y_pos1 - 15); surface.fillText(ball2.name, SCREEN_WIDTH / 2, y_pos2 - 15); for (let i = 0; i < MAX_HP; i++) { const hp_val1 = ball1.hp <= 0 ? 0 : ball1.display_hp; const hp_val2 = ball2.hp <= 0 ? 0 : ball2.display_hp; const cell_x1 = x_start + i * (cell_width + spacing); const hp_in_this_cell1 = Math.max(0, Math.min(1, hp_val1 - i)); const fill_width1 = cell_width * hp_in_this_cell1; surface.fillStyle = GREY; surface.fillRect(cell_x1, y_pos1, cell_width, bar_height); if (fill_width1 > 0) { surface.fillStyle = ball1.color; surface.fillRect(cell_x1, y_pos1, fill_width1, bar_height); } surface.strokeStyle = WHITE; surface.lineWidth = 2; surface.strokeRect(cell_x1, y_pos1, cell_width, bar_height); const cell_x2 = x_start + i * (cell_width + spacing); const hp_in_this_cell2 = Math.max(0, Math.min(1, hp_val2 - i)); const fill_width2 = cell_width * hp_in_this_cell2; surface.fillStyle = GREY; surface.fillRect(cell_x2, y_pos2, cell_width, bar_height); if (fill_width2 > 0) { surface.fillStyle = ball2.color; surface.fillRect(cell_x2, y_pos2, fill_width2, bar_height); } surface.strokeRect(cell_x2, y_pos2, cell_width, bar_height); } }
 function drawMainMenuButton(surface) { if (!mainMenuButton.visible) return; if (mainMenuButton.alpha < 1) mainMenuButton.alpha += 0.02; surface.save(); surface.globalAlpha = mainMenuButton.alpha; surface.fillStyle = "#008c9e"; surface.strokeStyle = "#00bcd4"; surface.lineWidth = 2; surface.fillRect(mainMenuButton.rect.x, mainMenuButton.rect.y, mainMenuButton.rect.width, mainMenuButton.rect.height); surface.strokeRect(mainMenuButton.rect.x, mainMenuButton.rect.y, mainMenuButton.rect.width, mainMenuButton.rect.height); surface.fillStyle = WHITE; surface.font = "bold 24px Arial"; surface.textAlign = "center"; surface.textBaseline = "middle"; surface.fillText(mainMenuButton.text, mainMenuButton.rect.x + mainMenuButton.rect.width / 2, mainMenuButton.rect.y + mainMenuButton.rect.height / 2); surface.restore(); }
 let last_time = 0; let initial_arena_width, final_arena_width, total_shrink, shrink_duration_frames; let current_arena_size, arena_y_offset, arena_center_pos, arena;
 function game_loop(timestamp) { if (!running) return; requestAnimationFrame(game_loop); const delta_time = timestamp - last_time; if (delta_time < 1000 / FPS) return; last_time = timestamp; ctx.save(); 
-drawBackground(ctx); if (screen_shake > 0) { screen_shake--; ctx.translate(Math.random() * screen_shake * 2 - screen_shake, Math.random() * screen_shake * 2 - screen_shake); } if (!game_over) { const elapsed_frames = (Date.now() - game_start_time) / (1000 / FPS); if (elapsed_frames < shrink_duration_frames) { current_arena_size = initial_arena_width - (total_shrink * (elapsed_frames / shrink_duration_frames)); arena.width = arena.height = Math.floor(current_arena_size); arena.left = arena_center_pos.x - arena.width / 2; arena.top = arena_center_pos.y - arena.height / 2; arena.right = arena.left + arena.width; arena.bottom = arena.top + arena.height; } for (const pup of powerups) { if (pup.rect.x < arena.left) pup.rect.x = arena.left; if (pup.rect.x + pup.rect.width > arena.right) pup.rect.x = arena.right - pup.rect.width; if (pup.rect.y < arena.top) pup.rect.y = arena.top; if (pup.rect.y + pup.rect.height > arena.bottom) pup.rect.y = arena.bottom - pup.rect.height; } player1.update(arena, () => { screen_shake = 4; }); player2.update(arena, () => { screen_shake = 4; }); const dist = player1.pos.distanceTo(player2.pos); if (dist < player1.radius + player2.radius) { if (dist > 0) { const normal = player2.pos.subtract(player1.pos).normalize(); const rel_vel = player1.vel.subtract(player2.vel); const v_normal = rel_vel.dot(normal); if (v_normal > 0) { const impulse = v_normal; player1.vel = player1.vel.subtract(normal.multiply(impulse)); player2.vel = player2.vel.add(normal.multiply(impulse)); screen_shake = 4; } } if (player1.is_attacking) { player2.update_hp(-1); player1.is_attacking = false; particles_list.push(new Particle(player2.pos.x, player2.pos.y, [player2.color], 60, 3, 8, 0.1, [30, 60], [1, 6])); playSound('sword_hit'); } else if (player2.is_attacking) { player1.update_hp(-1); player2.is_attacking = false; particles_list.push(new Particle(player1.pos.x, player1.pos.y, [player1.color], 60, 3, 8, 0.1, [30, 60], [1, 6])); playSound('sword_hit'); } } } else { if (winner) winner.update(arena, () => {}); if (gameOverTime && Date.now() - gameOverTime > 4000) { mainMenuButton.visible = true; } } powerups.forEach(p => p.update()); 
+drawBackground(ctx); if (screen_shake > 0) { screen_shake--; ctx.translate(rng.random() * screen_shake * 2 - screen_shake, rng.random() * screen_shake * 2 - screen_shake); } if (!game_over) { const elapsed_frames = (Date.now() - game_start_time) / (1000 / FPS); if (elapsed_frames < shrink_duration_frames) { current_arena_size = initial_arena_width - (total_shrink * (elapsed_frames / shrink_duration_frames)); arena.width = arena.height = Math.floor(current_arena_size); arena.left = arena_center_pos.x - arena.width / 2; arena.top = arena_center_pos.y - arena.height / 2; arena.right = arena.left + arena.width; arena.bottom = arena.top + arena.height; } for (const pup of powerups) { if (pup.rect.x < arena.left) pup.rect.x = arena.left; if (pup.rect.x + pup.rect.width > arena.right) pup.rect.x = arena.right - pup.rect.width; if (pup.rect.y < arena.top) pup.rect.y = arena.top; if (pup.rect.y + pup.rect.height > arena.bottom) pup.rect.y = arena.bottom - pup.rect.height; } player1.update(arena, () => { screen_shake = 4; }, rng); player2.update(arena, () => { screen_shake = 4; }, rng); const dist = player1.pos.distanceTo(player2.pos); if (dist < player1.radius + player2.radius) { if (dist > 0) { const normal = player2.pos.subtract(player1.pos).normalize(); const rel_vel = player1.vel.subtract(player2.vel); const v_normal = rel_vel.dot(normal); if (v_normal > 0) { const impulse = v_normal; player1.vel = player1.vel.subtract(normal.multiply(impulse)); player2.vel = player2.vel.add(normal.multiply(impulse)); screen_shake = 4; } } if (player1.is_attacking) { player2.update_hp(-1); player1.is_attacking = false; particles_list.push(new Particle(player2.pos.x, player2.pos.y, [player2.color], 60, 3, 8, 0.1, [30, 60], [1, 6], rng)); playSound('sword_hit'); } else if (player2.is_attacking) { player1.update_hp(-1); player2.is_attacking = false; particles_list.push(new Particle(player1.pos.x, player1.pos.y, [player1.color], 60, 3, 8, 0.1, [30, 60], [1, 6], rng)); playSound('sword_hit'); } } } else { if (winner) winner.update(arena, () => {}, rng); if (gameOverTime && Date.now() - gameOverTime > 4000) { mainMenuButton.visible = true; } } powerups.forEach(p => p.update()); 
+const getNewPowerupTimer = () => (0.5 + rng.random() * 2.5) * FPS;
+if (!saw_on_map && !game_over) { saw_spawn_timer--; if (saw_spawn_timer <= 0) { let x, y, size = 40; do { x = arena.left + rng.random() * (arena.width - size); y = arena.top + rng.random() * (arena.height - size); } while (checkCollision({ x, y, width: size, height: size }, player1.get_rect()) || checkCollision({ x, y, width: size, height: size }, player2.get_rect())); powerups.push(new PowerUp(x, y, 'saw', rng)); saw_on_map = true; playSound('pop'); saw_spawn_timer = getNewPowerupTimer(); } } if (!heart_on_map && !game_over) { heart_spawn_timer--; if (heart_spawn_timer <= 0) { let x, y, size = 35; do { x = arena.left + rng.random() * (arena.width - size); y = arena.top + rng.random() * (arena.height - size); } while (checkCollision({ x, y, width: size, height: size }, player1.get_rect()) || checkCollision({ x, y, width: size, height: size }, player2.get_rect())); powerups.push(new PowerUp(x, y, 'heart', rng)); heart_on_map = true; playSound('pop'); heart_spawn_timer = getNewPowerupTimer(); } } if (!game_over) { powerups = powerups.filter(pup => { let collected = false; if (checkCollision(pup.rect, player1.get_rect())) { if (pup.type === 'saw') { player1.is_attacking = true; player2.is_attacking = false; playSound('sword_out'); } if (pup.type === 'heart') { player1.update_hp(1); playSound('pop'); } collected = true; } else if (checkCollision(pup.rect, player2.get_rect())) { if (pup.type === 'saw') { player2.is_attacking = true; player1.is_attacking = false; playSound('sword_out'); } if (pup.type === 'heart') { player2.update_hp(1); playSound('pop'); } collected = true; } if (collected) { if (pup.type === 'saw') { saw_on_map = false; } if (pup.type === 'heart') { heart_on_map = false; } return false; } return true; }); } if ((player1.hp <= 0 || player2.hp <= 0) && !game_over) { game_over = true; gameOverTime = Date.now(); loser = player1.hp <= 0 ? player1 : player2; winner = player1.hp <= 0 ? player2 : player1; const colors = Array.from({ length: 10 }, () => `rgb(${50 + rng.random() * 205}, ${50 + rng.random() * 205}, ${50 + rng.random() * 205})`); particles_list.push(new Particle(loser.pos.x, loser.pos.y, colors, 500, 3, 10, 0.05, [80, 150], [2, 12], rng)); } const hue = (Date.now() / 20) % 360; ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`; ctx.lineWidth = 8; ctx.strokeRect(arena.left, arena.top, arena.width, arena.height); powerups.forEach(p => p.draw(ctx)); if (player1.hp > 0 || winner === player1) player1.draw(ctx); if (player2.hp > 0 || winner === player2) player2.draw(ctx); particles_list.forEach(p => { p.update(); p.draw(ctx); }); particles_list = particles_list.filter(p => p.particles.length > 0); ctx.restore(); draw_ui(ctx, player1, player2); drawMainMenuButton(ctx); }
+function resetToMainMenu() { running = false; releaseWakeLock(); document.body.style.background = 'var(--bg-color)'; document.getElementById('setup-screen').style.display = 'block'; document.getElementById('game-container').style.display = 'none'; game_over = false; winner = null; loser = null; gameOverTime = null; particles_list = []; powerups = []; mainMenuButton.visible = false; mainMenuButton.alpha = 0; }
 
-const getNewPowerupTimer = () => (0.5 + Math.random() * 2.5) * FPS;
-
-if (!saw_on_map && !game_over) { saw_spawn_timer--; if (saw_spawn_timer <= 0) { let x, y, size = 40; do { x = arena.left + Math.random() * (arena.width - size); y = arena.top + Math.random() * (arena.height - size); } while (checkCollision({ x, y, width: size, height: size }, player1.get_rect()) || checkCollision({ x, y, width: size, height: size }, player2.get_rect())); powerups.push(new PowerUp(x, y, 'saw')); saw_on_map = true; playSound('pop'); saw_spawn_timer = getNewPowerupTimer(); } } if (!heart_on_map && !game_over) { heart_spawn_timer--; if (heart_spawn_timer <= 0) { let x, y, size = 35; do { x = arena.left + Math.random() * (arena.width - size); y = arena.top + Math.random() * (arena.height - size); } while (checkCollision({ x, y, width: size, height: size }, player1.get_rect()) || checkCollision({ x, y, width: size, height: size }, player2.get_rect())); powerups.push(new PowerUp(x, y, 'heart')); heart_on_map = true; playSound('pop'); heart_spawn_timer = getNewPowerupTimer(); } } if (!game_over) { powerups = powerups.filter(pup => { let collected = false; if (checkCollision(pup.rect, player1.get_rect())) { if (pup.type === 'saw') { player1.is_attacking = true; player2.is_attacking = false; playSound('sword_out'); } if (pup.type === 'heart') { player1.update_hp(1); playSound('pop'); } collected = true; } else if (checkCollision(pup.rect, player2.get_rect())) { if (pup.type === 'saw') { player2.is_attacking = true; player1.is_attacking = false; playSound('sword_out'); } if (pup.type === 'heart') { player2.update_hp(1); playSound('pop'); } collected = true; } if (collected) { if (pup.type === 'saw') { saw_on_map = false; } if (pup.type === 'heart') { heart_on_map = false; } return false; } return true; }); } if ((player1.hp <= 0 || player2.hp <= 0) && !game_over) { game_over = true; gameOverTime = Date.now(); loser = player1.hp <= 0 ? player1 : player2; winner = player1.hp <= 0 ? player2 : player1; const colors = Array.from({ length: 10 }, () => `rgb(${50 + Math.random() * 205}, ${50 + Math.random() * 205}, ${50 + Math.random() * 205})`); particles_list.push(new Particle(loser.pos.x, loser.pos.y, colors, 500, 3, 10, 0.05, [80, 150], [2, 12])); } const hue = (Date.now() / 20) % 360; ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`; ctx.lineWidth = 8; ctx.strokeRect(arena.left, arena.top, arena.width, arena.height); powerups.forEach(p => p.draw(ctx)); if (player1.hp > 0 || winner === player1) player1.draw(ctx); if (player2.hp > 0 || winner === player2) player2.draw(ctx); particles_list.forEach(p => { p.update(); p.draw(ctx); }); particles_list = particles_list.filter(p => p.particles.length > 0); ctx.restore(); draw_ui(ctx, player1, player2); drawMainMenuButton(ctx); }
-function resetToMainMenu() { 
-    running = false; 
-    releaseWakeLock();
-    document.body.style.backgroundColor = 'var(--bg-color)'; 
-    document.getElementById('setup-screen').style.display = 'block'; 
-    document.getElementById('game-container').style.display = 'none'; 
-    game_over = false; winner = null; loser = null; gameOverTime = null; 
-    particles_list = []; powerups = []; 
-    mainMenuButton.visible = false; mainMenuButton.alpha = 0; 
-}
-function startGame(p1_data, p2_data, bg_settings) { 
+// --- МОДИФИЦИРОВАННАЯ ФУНКЦИЯ ЗАПУСКА ИГРЫ ---
+function startGame(p1_data, p2_data, bg_settings, seed) { 
     acquireWakeLock();
+    // Инициализируем RNG с заданным seed или случайным, если он не передан
+    rng = new SeededRandom(seed || Date.now());
 
     document.getElementById('setup-screen').style.display = 'none';
     document.getElementById('game-container').style.display = 'block';
@@ -433,10 +444,7 @@ function startGame(p1_data, p2_data, bg_settings) {
     } else {
         document.body.style.background = `linear-gradient(to bottom, ${bg_settings.color1}, ${bg_settings.color2})`;
     }
-
     backgroundSettings = bg_settings;
-    // ИЗМЕНЕНО: Изображения уже загружены и находятся в глобальных переменных.
-    
     const ui_bottom_margin = 280;
     arena_y_offset = ui_bottom_margin;
     initial_arena_width = SCREEN_WIDTH * 0.9;
@@ -453,15 +461,13 @@ function startGame(p1_data, p2_data, bg_settings) {
     arena = { left: arena_center_pos.x - current_arena_size / 2, top: arena_y_offset, width: current_arena_size, height: current_arena_size, right: arena_center_pos.x + current_arena_size / 2, bottom: arena_y_offset + current_arena_size }; 
     const BALL_DIAMETER = initial_arena_width / 5;
     
-    saw_on_map = false;
-    heart_on_map = false;
-    saw_spawn_timer = 2 * FPS;
-    heart_spawn_timer = 2 * FPS;
+    saw_on_map = false; heart_on_map = false;
+    saw_spawn_timer = 2 * FPS; heart_spawn_timer = 2 * FPS;
 
     mainMenuButton.rect.x = (SCREEN_WIDTH - mainMenuButton.rect.width) / 2;
     mainMenuButton.rect.y = SCREEN_HEIGHT - mainMenuButton.rect.height - 40;
-    player1 = new Ball(arena_center_pos.x - initial_arena_width / 4, arena_center_pos.y, p1_data.image, p1_data.color, p1_data.name, BALL_DIAMETER); 
-    player2 = new Ball(arena_center_pos.x + initial_arena_width / 4, arena_center_pos.y, p2_data.image, p2_data.color, p2_data.name, BALL_DIAMETER); 
+    player1 = new Ball(arena_center_pos.x - initial_arena_width / 4, arena_center_pos.y, p1_data.image, p1_data.color, p1_data.name, BALL_DIAMETER, rng); 
+    player2 = new Ball(arena_center_pos.x + initial_arena_width / 4, arena_center_pos.y, p2_data.image, p2_data.color, p2_data.name, BALL_DIAMETER, rng); 
     game_start_time = Date.now(); 
     running = true; 
     requestAnimationFrame(game_loop);
@@ -471,141 +477,171 @@ function startGame(p1_data, p2_data, bg_settings) {
 let p1_preview_image, p2_preview_image;
 let currentPlayerEditing = null;
 
-function drawPreviewBall(playerNum) {
-    const canvas = document.getElementById(`p${playerNum}-preview-canvas`);
-    const ctx = canvas.getContext('2d');
-    const cssWidth = parseInt(canvas.style.width, 10);
-    const cssHeight = parseInt(canvas.style.height, 10);
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+function drawPreviewBall(playerNum) { const canvas = document.getElementById(`p${playerNum}-preview-canvas`); const ctx = canvas.getContext('2d'); const cssWidth = parseInt(canvas.style.width, 10); const cssHeight = parseInt(canvas.style.height, 10); ctx.clearRect(0, 0, canvas.width, canvas.height); const color = document.getElementById(`p${playerNum}-color-picker`).value; const name = document.getElementById(`p${playerNum}-name`).value; const avatar = playerNum === 1 ? p1_preview_image : p2_preview_image; const diameter = cssWidth * 0.7; const radius = diameter / 2; const centerX = cssWidth / 2; const centerY = cssHeight / 2 + 15; ctx.fillStyle = "#f0f0f0"; ctx.font = "bold 18px Arial"; ctx.textAlign = "center"; ctx.textBaseline = "bottom"; ctx.fillText(name, centerX, 35); ctx.beginPath(); ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI); ctx.fillStyle = color; ctx.fill(); const border_thickness = diameter * 0.12; const inner_radius = radius - border_thickness; if (avatar && inner_radius >= 1) { ctx.save(); ctx.beginPath(); ctx.arc(centerX, centerY, inner_radius, 0, 2 * Math.PI); ctx.clip(); ctx.drawImage(avatar, centerX - inner_radius, centerY - inner_radius, inner_radius * 2, inner_radius * 2); ctx.restore(); } }
+async function updateAndDrawPlayerPreview(playerNum) { const color = document.getElementById(`p${playerNum}-color-picker`).value; const fileInput = document.getElementById(`p${playerNum}-image-file`); const urlInput = document.getElementById(`p${playerNum}-image-url`); const newImage = await getImage(fileInput.files[0], urlInput.value.trim(), color); if (playerNum === 1) { p1_preview_image = newImage; } else { p2_preview_image = newImage; } drawPreviewBall(playerNum); }
+function openPlayerModal(playerNum) { currentPlayerEditing = playerNum; const modal = document.getElementById('player-modal'); const nameInput = document.getElementById(`p${playerNum}-name`); const colorInput = document.getElementById(`p${playerNum}-color-picker`); const urlInput = document.getElementById(`p${playerNum}-image-url`); const modalTitle = document.getElementById('player-modal-title'); const modalName = document.getElementById('modal-p-name'); const modalColor = document.getElementById('modal-p-color'); const modalUrl = document.getElementById('modal-p-image-url'); const modalFile = document.getElementById('modal-p-image-file'); modalFile.value = null; const toggle = document.getElementById('avatar-source-toggle'); modalTitle.textContent = `Настройки Игрока ${playerNum}`; modalName.value = nameInput.value; modalColor.value = colorInput.value; modalUrl.value = urlInput.value; const hasUrl = urlInput.value.trim() !== ''; const useFile = !hasUrl; toggle.checked = useFile; document.getElementById('avatar-url-group').classList.toggle('hidden', useFile); document.getElementById('avatar-file-group').classList.toggle('hidden', !useFile); modal.classList.remove('hidden'); }
+function saveAndClosePlayerModal() { if (!currentPlayerEditing) return; const playerNum = currentPlayerEditing; const nameStorage = document.getElementById(`p${playerNum}-name`); const colorStorage = document.getElementById(`p${playerNum}-color-picker`); const urlStorage = document.getElementById(`p${playerNum}-image-url`); const fileStorage = document.getElementById(`p${playerNum}-image-file`); const modalName = document.getElementById('modal-p-name'); const modalColor = document.getElementById('modal-p-color'); const modalUrl = document.getElementById('modal-p-image-url'); const modalFile = document.getElementById('modal-p-image-file'); nameStorage.value = modalName.value; colorStorage.value = modalColor.value; const useFile = document.getElementById('avatar-source-toggle').checked; if (useFile) { if (modalFile.files.length > 0) { fileStorage.files = modalFile.files; } urlStorage.value = ''; } else { urlStorage.value = modalUrl.value; fileStorage.value = ''; } document.getElementById('player-modal').classList.add('hidden'); updateAndDrawPlayerPreview(playerNum).then(() => { if (playerNum === 1 || playerNum === 2) updateStagingWinnerOptions(); }); currentPlayerEditing = null; }
 
-    const color = document.getElementById(`p${playerNum}-color-picker`).value;
-    const name = document.getElementById(`p${playerNum}-name`).value;
-    const avatar = playerNum === 1 ? p1_preview_image : p2_preview_image;
-    
-    const diameter = cssWidth * 0.7;
-    const radius = diameter / 2;
-    const centerX = cssWidth / 2;
-    const centerY = cssHeight / 2 + 15;
-
-    ctx.fillStyle = "#f0f0f0";
-    ctx.font = "bold 18px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    ctx.fillText(name, centerX, 35);
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    ctx.fillStyle = color;
-    ctx.fill();
-    const border_thickness = diameter * 0.12;
-    const inner_radius = radius - border_thickness;
-    if (avatar && inner_radius >= 1) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, inner_radius, 0, 2 * Math.PI);
-        ctx.clip();
-        ctx.drawImage(avatar, centerX - inner_radius, centerY - inner_radius, inner_radius * 2, inner_radius * 2);
-        ctx.restore();
+// --- НОВАЯ ЛОГИКА ДЛЯ ПОСТАНОВОЧНОЙ ИГРЫ ---
+function updateStagingWinnerOptions() {
+    const winnerSelect = document.getElementById('staging-winner');
+    const p1Name = document.getElementById('p1-name').value;
+    const p2Name = document.getElementById('p2-name').value;
+    const currentValue = winnerSelect.value;
+    winnerSelect.innerHTML = '';
+    const option1 = new Option(p1Name, 'p1');
+    const option2 = new Option(p2Name, 'p2');
+    winnerSelect.add(option1);
+    winnerSelect.add(option2);
+    if (currentValue === 'p1' || currentValue === 'p2') {
+        winnerSelect.value = currentValue;
     }
 }
 
-async function updateAndDrawPlayerPreview(playerNum) {
-    const color = document.getElementById(`p${playerNum}-color-picker`).value;
-    const fileInput = document.getElementById(`p${playerNum}-image-file`);
-    const urlInput = document.getElementById(`p${playerNum}-image-url`);
-    
-    const newImage = await getImage(fileInput.files[0], urlInput.value.trim(), color);
-    
-    if (playerNum === 1) { p1_preview_image = newImage; } 
-    else { p2_preview_image = newImage; }
-    
-    drawPreviewBall(playerNum);
-}
+async function runSimulation(p1_data, p2_data, bg_settings, staging_params) {
+    isSimulating = true;
+    const simulationOverlay = document.getElementById('simulation-overlay');
+    const simulationStatus = document.getElementById('simulation-status');
+    simulationOverlay.classList.remove('hidden');
 
-function openPlayerModal(playerNum) {
-    currentPlayerEditing = playerNum;
-    const modal = document.getElementById('player-modal');
-    const nameInput = document.getElementById(`p${playerNum}-name`);
-    const colorInput = document.getElementById(`p${playerNum}-color-picker`);
-    const urlInput = document.getElementById(`p${playerNum}-image-url`);
-    
-    const modalTitle = document.getElementById('player-modal-title');
-    const modalName = document.getElementById('modal-p-name');
-    const modalColor = document.getElementById('modal-p-color');
-    const modalUrl = document.getElementById('modal-p-image-url');
-    const modalFile = document.getElementById('modal-p-image-file');
-    modalFile.value = null;
+    let simulationCount = 0;
+    const MAX_SIMULATIONS = 50000; // Ограничение на всякий случай
 
-    const toggle = document.getElementById('avatar-source-toggle');
-    modalTitle.textContent = `Настройки Игрока ${playerNum}`;
-    modalName.value = nameInput.value;
-    modalColor.value = colorInput.value;
-    modalUrl.value = urlInput.value;
-    
-    const hasUrl = urlInput.value.trim() !== '';
-    const useFile = !hasUrl;
-    toggle.checked = useFile;
-
-    document.getElementById('avatar-url-group').classList.toggle('hidden', useFile);
-    document.getElementById('avatar-file-group').classList.toggle('hidden', !useFile);
-    modal.classList.remove('hidden');
-}
-
-function saveAndClosePlayerModal() {
-    if (!currentPlayerEditing) return;
-    const playerNum = currentPlayerEditing;
-    const nameStorage = document.getElementById(`p${playerNum}-name`);
-    const colorStorage = document.getElementById(`p${playerNum}-color-picker`);
-    const urlStorage = document.getElementById(`p${playerNum}-image-url`);
-    const fileStorage = document.getElementById(`p${playerNum}-image-file`);
-    const modalName = document.getElementById('modal-p-name');
-    const modalColor = document.getElementById('modal-p-color');
-    const modalUrl = document.getElementById('modal-p-image-url');
-    const modalFile = document.getElementById('modal-p-image-file');
-
-    nameStorage.value = modalName.value;
-    colorStorage.value = modalColor.value;
-    
-    const useFile = document.getElementById('avatar-source-toggle').checked;
-    if (useFile) {
-        if (modalFile.files.length > 0) {
-            fileStorage.files = modalFile.files;
+    while (isSimulating && simulationCount < MAX_SIMULATIONS) {
+        simulationCount++;
+        if (simulationCount % 10 === 0) { // Обновляем UI не каждый раз, чтобы было быстрее
+            simulationStatus.textContent = `Симуляция №${simulationCount}`;
+            await new Promise(resolve => setTimeout(resolve, 0)); // Даем браузеру обработать события (клик по "отмена")
         }
-        urlStorage.value = '';
-    } else {
-        urlStorage.value = modalUrl.value;
-        fileStorage.value = '';
+
+        const seed = Date.now() + simulationCount;
+        const sim_rng = new SeededRandom(seed);
+        
+        // --- Настройка симуляции ---
+        const s_arena = { ...arena };
+        const s_initial_arena_width = initial_arena_width;
+        const s_shrink_duration_frames = shrink_duration_frames;
+        const s_total_shrink = total_shrink;
+        const BALL_DIAMETER = s_initial_arena_width / 5;
+        const s_p1 = new Ball(arena_center_pos.x - s_initial_arena_width / 4, arena_center_pos.y, null, p1_data.color, p1_data.name, BALL_DIAMETER, sim_rng);
+        const s_p2 = new Ball(arena_center_pos.x + s_initial_arena_width / 4, arena_center_pos.y, null, p2_data.color, p2_data.name, BALL_DIAMETER, sim_rng);
+        const s_powerups = [];
+        let s_saw_on_map = false, s_heart_on_map = false;
+        let s_saw_spawn_timer = 2 * FPS, s_heart_spawn_timer = 2 * FPS;
+        let frame = 0;
+        let winnerDroppedToLowHP = false;
+
+        // --- Цикл симуляции одной игры ---
+        while (s_p1.hp > 0 && s_p2.hp > 0) {
+            frame++;
+            // Логика уменьшения арены
+            if (frame < s_shrink_duration_frames) {
+                let current_size = s_initial_arena_width - (s_total_shrink * (frame / s_shrink_duration_frames));
+                s_arena.width = s_arena.height = Math.floor(current_size);
+                s_arena.left = arena_center_pos.x - s_arena.width / 2;
+                s_arena.top = arena_y_offset;
+                s_arena.right = s_arena.left + s_arena.width;
+                s_arena.bottom = s_arena.top + s_arena.height;
+            }
+            s_p1.update(s_arena, () => {}, sim_rng);
+            s_p2.update(s_arena, () => {}, sim_rng);
+            
+            // Проверка столкновения
+            if (s_p1.pos.distanceTo(s_p2.pos) < s_p1.radius + s_p2.radius) {
+                if (s_p1.is_attacking) { s_p2.update_hp(-1); s_p1.is_attacking = false; }
+                else if (s_p2.is_attacking) { s_p1.update_hp(-1); s_p2.is_attacking = false; }
+            }
+
+            // Проверка условия "камбэка"
+            if(staging_params.comeback) {
+                const designatedWinner = staging_params.winner === 'p1' ? s_p1 : s_p2;
+                if(designatedWinner.hp <= staging_params.comebackHp) {
+                    winnerDroppedToLowHP = true;
+                }
+            }
+
+            // Спавн бонусов
+            const getNewPowerupTimer = () => (0.5 + sim_rng.random() * 2.5) * FPS;
+            if (!s_saw_on_map) { s_saw_spawn_timer--; if (s_saw_spawn_timer <= 0) { s_powerups.push({type: 'saw', rect: {x:0, y:0, width: 40, height: 40}}); s_saw_on_map = true; s_saw_spawn_timer = getNewPowerupTimer(); } }
+            if (!s_heart_on_map) { s_heart_spawn_timer--; if (s_heart_spawn_timer <= 0) { s_powerups.push({type: 'heart', rect: {x:0, y:0, width: 35, height: 35}}); s_heart_on_map = true; s_heart_spawn_timer = getNewPowerupTimer(); } }
+            
+            // Сбор бонусов
+            s_powerups.slice().forEach((pup, index) => {
+                let collected = false;
+                if (checkCollision(pup.rect, s_p1.get_rect())) {
+                    if (pup.type === 'saw') { s_p1.is_attacking = true; s_p2.is_attacking = false; }
+                    if (pup.type === 'heart') { s_p1.update_hp(1); }
+                    collected = true;
+                } else if (checkCollision(pup.rect, s_p2.get_rect())) {
+                    if (pup.type === 'saw') { s_p2.is_attacking = true; s_p1.is_attacking = false; }
+                    if (pup.type === 'heart') { s_p2.update_hp(1); }
+                    collected = true;
+                }
+                if (collected) {
+                    if (pup.type === 'saw') s_saw_on_map = false;
+                    if (pup.type === 'heart') s_heart_on_map = false;
+                    s_powerups.splice(index, 1);
+                }
+            });
+        }
+        
+        // --- Проверка условий после завершения симуляции ---
+        const actualWinner = s_p1.hp <= 0 ? 'p2' : 'p1';
+        const gameDuration = frame / FPS;
+
+        const winnerCondition = actualWinner === staging_params.winner;
+        const timeCondition = gameDuration >= staging_params.minTime && gameDuration <= staging_params.maxTime;
+        const comebackCondition = !staging_params.comeback || (staging_params.comeback && winnerDroppedToLowHP);
+
+        if (winnerCondition && timeCondition && comebackCondition) {
+            console.log(`Найдена подходящая игра на симуляции №${simulationCount}! Seed: ${seed}`);
+            isSimulating = false;
+            simulationOverlay.classList.add('hidden');
+            
+            // --- Запускаем отсчет и затем реплей ---
+            const countdownOverlay = document.getElementById('countdown-overlay');
+            const countdownEl = document.getElementById('countdown');
+            countdownOverlay.classList.remove('hidden');
+            let count = 3;
+            countdownEl.textContent = count;
+            const countdownInterval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownEl.textContent = count;
+                } else {
+                    clearInterval(countdownInterval);
+                    countdownOverlay.classList.add('hidden');
+                    startGame(p1_data, p2_data, bg_settings, seed); // Запускаем реплей с найденным seed
+                }
+            }, 1000);
+            return;
+        }
     }
 
-    document.getElementById('player-modal').classList.add('hidden');
-    updateAndDrawPlayerPreview(playerNum);
-    currentPlayerEditing = null;
+    // Если вышли из цикла
+    isSimulating = false;
+    simulationOverlay.classList.add('hidden');
+    if (simulationCount >= MAX_SIMULATIONS) {
+        alert("Не удалось найти игру с заданными параметрами за " + MAX_SIMULATIONS + " попыток. Пожалуйста, смягчите условия.");
+    }
 }
+
 
 window.onload = async () => {
-    ['p1-preview-canvas', 'p2-preview-canvas'].forEach(id => {
-        const canvas = document.getElementById(id);
-        const cssWidth = canvas.width;
-        const cssHeight = canvas.height;
-        
-        canvas.width = Math.floor(cssWidth * dpr);
-        canvas.height = Math.floor(cssHeight * dpr);
-        canvas.style.width = cssWidth + 'px';
-        canvas.style.height = cssHeight + 'px';
-        
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-    });
+    ['p1-preview-canvas', 'p2-preview-canvas'].forEach(id => { const canvas = document.getElementById(id); const cssWidth = canvas.width; const cssHeight = canvas.height; canvas.width = Math.floor(cssWidth * dpr); canvas.height = Math.floor(cssHeight * dpr); canvas.style.width = cssWidth + 'px'; canvas.style.height = cssHeight + 'px'; const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr); });
 
     const playerModal = document.getElementById('player-modal');
     const arenaModal = document.getElementById('arena-modal');
+    const stagingModal = document.getElementById('staging-modal');
     const bgToggle = document.getElementById('bg-type-toggle');
     const avatarToggle = document.getElementById('avatar-source-toggle');
     playerModal.classList.add('hidden');
     arenaModal.classList.add('hidden');
+    stagingModal.classList.add('hidden');
 
     await updateAndDrawPlayerPreview(1);
     await updateAndDrawPlayerPreview(2);
+    updateStagingWinnerOptions();
 
     document.getElementById('p1-settings-btn').addEventListener('click', () => openPlayerModal(1));
     document.getElementById('p2-settings-btn').addEventListener('click', () => openPlayerModal(2));
@@ -613,42 +649,39 @@ window.onload = async () => {
     document.getElementById('close-player-modal-btn').addEventListener('click', saveAndClosePlayerModal);
     document.getElementById('close-arena-modal-btn').addEventListener('click', () => arenaModal.classList.add('hidden'));
     
-    avatarToggle.addEventListener('change', () => {
-        document.getElementById('avatar-url-group').classList.toggle('hidden', avatarToggle.checked);
-        document.getElementById('avatar-file-group').classList.toggle('hidden', !avatarToggle.checked);
-    });
-    bgToggle.addEventListener('change', () => {
-        document.getElementById('solid-color-group').classList.toggle('hidden', bgToggle.checked);
-        document.getElementById('gradient-color-group').classList.toggle('hidden', !bgToggle.checked);
-    });
+    avatarToggle.addEventListener('change', () => { document.getElementById('avatar-url-group').classList.toggle('hidden', avatarToggle.checked); document.getElementById('avatar-file-group').classList.toggle('hidden', !avatarToggle.checked); });
+    bgToggle.addEventListener('change', () => { document.getElementById('solid-color-group').classList.toggle('hidden', bgToggle.checked); document.getElementById('gradient-color-group').classList.toggle('hidden', !bgToggle.checked); });
     const presetsContainer = document.getElementById('modal-p-color-presets');
     const modalColorPicker = document.getElementById('modal-p-color');
-    for (const [name, color] of Object.entries(PRESET_COLORS)) {
-        const swatch = document.createElement('div');
-        swatch.className = 'color-swatch';
-        swatch.style.backgroundColor = color;
-        swatch.title = name;
-        swatch.addEventListener('click', () => modalColorPicker.value = color);
-        presetsContainer.appendChild(swatch);
-    }
-    canvas.addEventListener('click', (event) => {
-        if (!mainMenuButton.visible) return;
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (event.clientX - rect.left);
-        const mouseY = (event.clientY - rect.top);
-        if (checkCollision({x: mouseX, y: mouseY, width: 1, height: 1}, mainMenuButton.rect)) {
-            resetToMainMenu();
-            drawPreviewBall(1);
-            drawPreviewBall(2);
-        }
+    for (const [name, color] of Object.entries(PRESET_COLORS)) { const swatch = document.createElement('div'); swatch.className = 'color-swatch'; swatch.style.backgroundColor = color; swatch.title = name; swatch.addEventListener('click', () => modalColorPicker.value = color); presetsContainer.appendChild(swatch); }
+    canvas.addEventListener('click', (event) => { if (!mainMenuButton.visible) return; const rect = canvas.getBoundingClientRect(); const mouseX = (event.clientX - rect.left); const mouseY = (event.clientY - rect.top); if (checkCollision({x: mouseX, y: mouseY, width: 1, height: 1}, mainMenuButton.rect)) { resetToMainMenu(); drawPreviewBall(1); drawPreviewBall(2); } });
+    canvas.addEventListener('mousemove', (event) => { if (!mainMenuButton.visible) { canvas.style.cursor = 'default'; return; } const rect = canvas.getBoundingClientRect(); const mouseX = (event.clientX - rect.left); const mouseY = (event.clientY - rect.top); canvas.style.cursor = checkCollision({x: mouseX, y: mouseY, width: 1, height: 1}, mainMenuButton.rect) ? 'pointer' : 'default'; });
+    
+    // --- НОВАЯ ЛОГИКА ДЛЯ КНОПОК ПОСТАНОВОЧНОЙ ИГРЫ ---
+    document.getElementById('staging-toggle-btn').addEventListener('click', () => {
+        updateStagingWinnerOptions();
+        stagingModal.classList.remove('hidden');
     });
-    canvas.addEventListener('mousemove', (event) => {
-        if (!mainMenuButton.visible) { canvas.style.cursor = 'default'; return; }
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = (event.clientX - rect.left);
-        const mouseY = (event.clientY - rect.top);
-        canvas.style.cursor = checkCollision({x: mouseX, y: mouseY, width: 1, height: 1}, mainMenuButton.rect) ? 'pointer' : 'default';
+    document.getElementById('close-staging-modal-btn').addEventListener('click', () => stagingModal.classList.add('hidden'));
+
+    const stagingActiveToggle = document.getElementById('staging-active-toggle');
+    const stagingStatus = document.getElementById('staging-status');
+    stagingActiveToggle.addEventListener('change', () => {
+        const formContent = document.getElementById('staging-form-content');
+        formContent.classList.toggle('disabled-look', !stagingActiveToggle.checked);
+        stagingStatus.textContent = stagingActiveToggle.checked ? 'Вкл' : 'Выкл';
     });
+    const comebackToggle = document.getElementById('staging-comeback-toggle');
+    comebackToggle.addEventListener('change', () => {
+        document.getElementById('comeback-hp-group').classList.toggle('hidden', !comebackToggle.checked);
+    });
+
+    document.getElementById('cancel-simulation-btn').addEventListener('click', () => {
+        isSimulating = false;
+        console.log('Симуляция отменена пользователем.');
+    });
+    
+    // --- ОБНОВЛЕННАЯ ЛОГИКА КНОПКИ "НАЧАТЬ ИГРУ" ---
     document.getElementById('start-game-btn').addEventListener('click', async () => {
         if (!audioCtx) audioCtx = new AudioContext();
         if (audioCtx.state === 'suspended') { await audioCtx.resume(); }
@@ -656,58 +689,46 @@ window.onload = async () => {
         status.classList.remove('hidden');
         try {
             const bg_settings = { type: bgToggle.checked ? 'gradient' : 'solid' };
-            if (bg_settings.type === 'solid') {
-                bg_settings.color1 = document.getElementById('bg-color').value;
-            } else {
-                bg_settings.color1 = document.getElementById('bg-gradient-1').value;
-                bg_settings.color2 = document.getElementById('bg-gradient-2').value;
-            }
+            if (bg_settings.type === 'solid') { bg_settings.color1 = document.getElementById('bg-color').value; } else { bg_settings.color1 = document.getElementById('bg-gradient-1').value; bg_settings.color2 = document.getElementById('bg-gradient-2').value; }
 
-            // ИЗМЕНЕНО: Загружаем все ресурсы из файлов, используя новые функции
             const soundUrls = {
                 hit_border: 'assets/sounds/hit_border.ogg',
-                pop: [
-                    'assets/sounds/pop1.ogg', 'assets/sounds/pop2.ogg', 'assets/sounds/pop3.ogg', 
-                    'assets/sounds/pop4.ogg', 'assets/sounds/pop5.ogg'
-                ],
-                sword_hit: [
-                    'assets/sounds/swordhit1.ogg', 'assets/sounds/swordhit2.ogg', 'assets/sounds/swordhit3.ogg',
-                    'assets/sounds/swordhit4.ogg', 'assets/sounds/swordhit5.ogg', 'assets/sounds/swordhit6.ogg', 'assets/sounds/swordhit7.ogg'
-                ],
+                pop: ['assets/sounds/pop1.ogg', 'assets/sounds/pop2.ogg', 'assets/sounds/pop3.ogg', 'assets/sounds/pop4.ogg', 'assets/sounds/pop5.ogg'],
+                sword_hit: ['assets/sounds/swordhit1.ogg', 'assets/sounds/swordhit2.ogg', 'assets/sounds/swordhit3.ogg', 'assets/sounds/swordhit4.ogg', 'assets/sounds/swordhit5.ogg', 'assets/sounds/swordhit6.ogg', 'assets/sounds/swordhit7.ogg'],
                 sword_out: ['assets/sounds/swordout1.ogg', 'assets/sounds/swordout2.ogg']
             };
 
             const [loaded_saw, loaded_heart, hit_sound, pop_sounds, sword_hit_sounds, sword_out_sounds] = await Promise.all([
-                loadImage('assets/images/saw.png'),
-                loadImage('assets/images/heart.png'),
-                loadSound(soundUrls.hit_border, audioCtx),
-                Promise.all(soundUrls.pop.map(url => loadSound(url, audioCtx))),
-                Promise.all(soundUrls.sword_hit.map(url => loadSound(url, audioCtx))),
-                Promise.all(soundUrls.sword_out.map(url => loadSound(url, audioCtx)))
+                loadImage('assets/images/saw.png'), loadImage('assets/images/heart.png'), loadSound(soundUrls.hit_border, audioCtx),
+                Promise.all(soundUrls.pop.map(url => loadSound(url, audioCtx))), Promise.all(soundUrls.sword_hit.map(url => loadSound(url, audioCtx))), Promise.all(soundUrls.sword_out.map(url => loadSound(url, audioCtx)))
             ]);
 
             raw_saw_img = loaded_saw || createPlaceholderImage(40, '#969696');
             raw_heart_img = loaded_heart || createPlaceholderImage(35, '#ff69b4');
-            allSounds = {
-                hit_border: hit_sound, 
-                pop: pop_sounds.filter(s => s),
-                sword_hit: sword_hit_sounds.filter(s => s), 
-                sword_out: sword_out_sounds.filter(s => s)
-            };
+            allSounds = { hit_border: hit_sound, pop: pop_sounds.filter(s => s), sword_hit: sword_hit_sounds.filter(s => s), sword_out: sword_out_sounds.filter(s => s) };
             
-            const p1_data = { 
-                name: document.getElementById('p1-name').value, 
-                color: document.getElementById('p1-color-picker').value, 
-                image: p1_preview_image 
-            };
-            const p2_data = { 
-                name: document.getElementById('p2-name').value, 
-                color: document.getElementById('p2-color-picker').value, 
-                image: p2_preview_image
-            };
-
+            const p1_data = { name: document.getElementById('p1-name').value, color: document.getElementById('p1-color-picker').value, image: p1_preview_image };
+            const p2_data = { name: document.getElementById('p2-name').value, color: document.getElementById('p2-color-picker').value, image: p2_preview_image };
             status.classList.add('hidden');
-            startGame(p1_data, p2_data, bg_settings);
+            
+            // --- ОСНОВНАЯ ПРОВЕРКА: ЗАПУСКАТЬ СИМУЛЯЦИЮ ИЛИ ОБЫЧНУЮ ИГРУ ---
+            if (stagingActiveToggle.checked) {
+                const staging_params = {
+                    winner: document.getElementById('staging-winner').value,
+                    minTime: parseInt(document.getElementById('staging-min-time').value, 10),
+                    maxTime: parseInt(document.getElementById('staging-max-time').value, 10),
+                    comeback: document.getElementById('staging-comeback-toggle').checked,
+                    comebackHp: parseInt(document.getElementById('staging-comeback-hp').value, 10)
+                };
+                if (staging_params.minTime > staging_params.maxTime) {
+                    alert("Минимальное время не может быть больше максимального!");
+                    return;
+                }
+                runSimulation(p1_data, p2_data, bg_settings, staging_params);
+            } else {
+                startGame(p1_data, p2_data, bg_settings);
+            }
+
         } catch (error) {
             status.textContent = "Ошибка загрузки ресурсов. Попробуйте обновить страницу.";
             alert("Произошла ошибка при загрузке ресурсов. Убедитесь, что все файлы на месте и проверьте консоль (F12).");
@@ -719,6 +740,3 @@ window.onload = async () => {
 
 </body>
 </html>
-
-
-
